@@ -32,7 +32,8 @@ win = visual.Window(size=(1920, 1080),
                     units='pix',
                     fullscr=True,
                     allowGUI=False,
-                    screen=0)
+                    color=[1, 1, 1],
+                    screen=1)
 
 # prepare the audio stimuli used in calibration
 grow_sound = sound.Sound(GROW_SOUND_PATH)
@@ -318,7 +319,7 @@ while waitkey:
     # The value is numpy.nan if Tobii failed to detect gaze position.
     if np.nan not in currentGazePosition:
         marker.setPos(currentGazePosition)
-        marker.setLineColor('white')
+        marker.setLineColor('black')
     else:
         marker.setLineColor('red')
     keys = event.getKeys()
