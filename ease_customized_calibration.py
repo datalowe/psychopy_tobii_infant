@@ -4,6 +4,8 @@ import types
 import numpy as np
 from psychopy import core, event, sound, visual
 
+from moviepy.config import get_setting
+
 from psychopy_tobii_infant import TobiiInfantController
 
 ###############################################################################
@@ -129,7 +131,7 @@ def manual_calibration(
             self.targets[current_point_index].draw()
             
             # handle playing sounds if target started growing/shrinking
-            if  vbcx is not None:
+            if previous_frame_width is not None:
                 target_is_growing = previous_frame_width < newsize[0]
                 if target_is_growing and allow_grow_sound:
                     grow_sound.play()
@@ -195,14 +197,15 @@ def automated_calibration(
     # (the default value assigned here will be overwritten, see below)
     target_start_time = clock.getTime()
     # form a list of the target position numbers
-    pos_nums = self.numkey_dict.keys()
+    # (eg '1', '2', ... '5')
+    pos_nums = [str(x) for x in range(1, len(CALINORMP) + 1)]
     while in_calibration:
         # if calibration hasn't already been set to trigger,
         # and there are still points left to calibrate with
         if not collect_when_shrunk and pos_nums:
             # get the number of the position for which data will be fetched this time
             pos_num = pos_nums.pop()
-            current_point_index = self.numkey_dict[key]
+            current_point_index = self.numkey_dict[pos_num]
             target_start_time = clock.getTime()
             # trigger calibration data collection once target has
             # shrunk enough
@@ -278,13 +281,22 @@ grabber.setAutoDraw(False)
 grabber.stop()
 
 # How to use:
-# - Use 1~9 (depending on the number of calibration points) to present
-#   calibration stimulus and 0 to hide the target.
-# - Press space to start collect calibration samples.
-# - Press return (Enter) to finish the calibration and show the result.
-# - Choose the points to recalibrate with 1~9.
-# - Press decision_key (default is space) to accept the calibration or
-# recalibrate.
+# The first 'calibration run' is automated, just let it run.
+# Once the first calibration run has finished, you'll be presented
+# a screen that estimates how close (shorter lines means closer) the participant's
+# gaze was to each calibration point during calibration. Mark all points where
+# the participant's gaze was 'too off' (ie lines are 'too long'), using the
+# keyboard numbers 1-5. Each point that's set to be recalibrated will get a small
+# blue circle drawn over it. If the calibration seems to have gone well enough
+# (this is partly a subjective appraisal), press 'space' to end calibration.
+# All recalibration is done manually by you as the experimenter:
+# - Use keyboard numbers 1-9 (depending on how many calibration point 
+#   coordinates you've specified, in CALINORMP) to activate
+#   each calibration point's target stimulus and 0 to hide the target.
+# - Press space to start calibration sample collection (the collection
+#   is delayed, if necessary, until the target has shrunk down)
+# - Press return (Enter) to finish the recalibration and see the 
+#   updated results.
 success = controller.run_calibration(CALIPOINTS, CALISTIMS)
 if not success:
     core.quit()
