@@ -22,8 +22,16 @@ CALISTIMS = [
     'infant/{}'.format(x) for x in os.listdir(os.path.join(DIR, 'infant'))
     if x.endswith('.png') and not x.startswith('.')
 ]
+# keyboard key that is to be used, during calibration, for temporarily switching 
+# back to the attention grabber movie, if the child seems to lose all interest
+# in the screen. pick **a letter** here, since the code below ensures that
+# both upper-and lowercase versions of the letter (eg 'a' or 'A') are checked
+# for, to avoid issues with caps lock
+ATTENTION_GRAB_KEY = 'a'
+# relative paths to grow/shrink sound files
 GROW_SOUND_PATH = 'infant/grow.wav'
 SHRINK_SOUND_PATH = 'infant/shrink.wav'
+
 
 ###############################################################################
 # Demo
@@ -48,6 +56,9 @@ def main_calibration(
     collect_key='space',
     exit_key='return'
     ):
+    # set boolean property that indicates if the experimenter wants to
+    # temporarily show the attention grabber movie at the moment
+    self.show_att_grabber = False
     # run automated procedure if it hasn't already been run
     if not hasattr(self, 'automated_calib_done'):
         automated_calibration(
@@ -120,6 +131,21 @@ def manual_calibration(
                 # exit calibration when return is presssed
                 in_calibration = False
                 break
+            elif key.lower() == ATTENTION_GRAB_KEY:
+                # toggle attention grabber movie on/off
+                self.show_att_grabber = not self.show_att_grabber
+                # pause (if it was previously playing) or start (
+                # if it wasn't previously playing) attention grabber
+                # movie
+                grabber.play() if self.show_att_grabber else grabber.pause()
+        
+        # if the experimenter wants to temporarily play part of the
+        # attention grabber movie, keep playing it and don't do anything
+        # else this frame
+        if self.show_att_grabber:
+            grabber.draw()
+            win.flip()
+            continue
 
         # draw calibration target
         if current_point_index in self.retry_points:
@@ -279,7 +305,8 @@ controller.show_status()
 
 # stop the attention grabber
 grabber.setAutoDraw(False)
-grabber.stop()
+# pause movie, so that it can then be switched back to during calibration
+grabber.pause()
 
 # How to use:
 # The first 'calibration run' is automated, just let it run.
@@ -298,7 +325,7 @@ grabber.stop()
 #   is delayed, if necessary, until the target has shrunk down)
 # - Press return (Enter) to finish the recalibration and see the 
 #   updated results.
-success = controller.run_calibration(CALIPOINTS, CALISTIMS)
+success = controller.run_calibration(CALIPOINTS, CALISTIMS, result_msg_color="black")
 if not success:
     core.quit()
 
