@@ -2,11 +2,15 @@ import os
 import types
 
 import numpy as np
-from psychopy import core, event, sound, visual
+from psychopy import core, event, sound, visual, prefs
 
 from moviepy.config import get_setting
 
 from psychopy_tobii_infant import TobiiInfantController
+
+###############################################################################
+# Settings
+prefs.hardware['audioLib'] = 'ptb'
 
 ###############################################################################
 # Constants
@@ -28,10 +32,8 @@ CALISTIMS = [
 # both upper-and lowercase versions of the letter (eg 'a' or 'A') are checked
 # for, to avoid issues with caps lock
 ATTENTION_GRAB_KEY = 'a'
-# relative paths to grow/shrink sound files
-GROW_SOUND_PATH = 'infant/grow.wav'
-SHRINK_SOUND_PATH = 'infant/shrink.wav'
-
+# relative path to grow sound file
+GROW_SOUND_PATH = 'infant/target_sound.wav'
 
 ###############################################################################
 # Demo
@@ -44,11 +46,15 @@ win = visual.Window(size=(1920, 1080),
                     screen=1)
 
 # prepare the audio stimuli used in calibration
-grow_sound = sound.Sound(GROW_SOUND_PATH)
-shrink_sound = sound.Sound(SHRINK_SOUND_PATH)
+grow_sound = sound.Sound(GROW_SOUND_PATH, secs=-1, stereo=True, hamming=True, name='grow_sound')
 
 # setup the attention grabber during adjusting the participant's position
-grabber = visual.MovieStim3(win, "infant/seal-clip.mp4")
+grabber = visual.MovieStim3(
+    win, 
+    "infant/teletubbies_intro.mp4", 
+    noAudio=False,
+    size=(1280 * 2/3, 720 * 2/3)
+)
 
 def main_calibration(
     self,
@@ -90,18 +96,17 @@ def manual_calibration(
     ):
     """
     A customized manual (see automated version below)
-    calibration procedure which uses shrink/grow sounds.
+    calibration procedure which uses grow sounds.
     Partly uses code copied from the psychopy_tobii_infant 
     package's demos.
     """
     # boolean indicating if calibration data are to be collected
     # when target is shrunk to close to minimum size
     collect_when_shrunk = False
-    # booleans indicating if shrink/grow sounds are allowed to be
+    # booleans indicating if grow sounds are allowed to be
     # played (these are for avoiding sounds being repeatedly started
     # in very quick succession)
     allow_grow_sound = True
-    allow_shrink_sound = True
     # boolean indicating if the target is currently growing
     target_is_growing = False
     # variable for holding previous frame's target width
@@ -152,23 +157,19 @@ def manual_calibration(
             self.targets[current_point_index].setPos(
                 self.original_calibration_points[current_point_index])
             t = (clock.getTime() - target_start_time) * self.shrink_speed
-            newsize = [(np.cos(t)**2 + self.calibration_target_min) * e
+            newsize = [(np.sin(t)**2 + self.calibration_target_min) * e
                        for e in self.target_original_size]
             self.targets[current_point_index].setSize(newsize)
             self.targets[current_point_index].draw()
             
-            # handle playing sounds if target started growing/shrinking
+            # handle playing sounds if target started growing
             if previous_frame_width is not None:
                 target_is_growing = previous_frame_width < newsize[0]
                 if target_is_growing and allow_grow_sound:
                     grow_sound.play()
-                    shrink_sound.stop()
                     allow_grow_sound = False
-                    allow_shrink_sound = True
-                elif not target_is_growing and allow_shrink_sound:
-                    shrink_sound.play()
+                elif not target_is_growing and not allow_grow_sound:
                     grow_sound.stop()
-                    allow_shrink_sound = False
                     allow_grow_sound = True
             previous_frame_width = newsize[0]
         
@@ -204,11 +205,10 @@ def automated_calibration(
     # boolean indicating if calibration data are to be collected
     # when target is shrunk to close to minimum size
     collect_when_shrunk = False
-    # booleans indicating if shrink/grow sounds are allowed to be
-    # played (these are for avoiding sounds being repeatedly started
+    # boolean indicating if grow sounds are allowed to be
+    # played (this is for avoiding sounds being repeatedly started
     # in very quick succession)
     allow_grow_sound = True
-    allow_shrink_sound = True
     # boolean indicating if the target is currently growing
     target_is_growing = False
     # variable for holding previous frame's target width
@@ -226,41 +226,41 @@ def automated_calibration(
     # form a list of the target position numbers
     # (eg '1', '2', ... '5')
     pos_nums = [str(x) for x in range(1, len(CALINORMP) + 1)]
+    target_activated = False
     while in_calibration:
         # if calibration hasn't already been set to trigger,
         # and there are still points left to calibrate with
-        if not collect_when_shrunk and pos_nums:
+        if not target_activated and pos_nums:
             # get the number of the position for which data will be fetched this time
             pos_num = pos_nums.pop()
             current_point_index = self.numkey_dict[pos_num]
             target_start_time = clock.getTime()
-            # trigger calibration data collection once target has
-            # shrunk enough
-            collect_when_shrunk = True
+            target_activated = True
         
         # draw calibration target
         if current_point_index in self.retry_points:
             self.targets[current_point_index].setPos(
                 self.original_calibration_points[current_point_index])
             t = (clock.getTime() - target_start_time) * self.shrink_speed
-            newsize = [(np.cos(t)**2 + self.calibration_target_min) * e
+            newsize = [(np.sin(t)**2 + self.calibration_target_min) * e
                        for e in self.target_original_size]
             self.targets[current_point_index].setSize(newsize)
             self.targets[current_point_index].draw()
             
-            # handle playing sounds if target started growing/shrinking
+            # handle playing sounds if target started growing,
+            # and enable calibration trigger if target has started
+            # shrinking
             if previous_frame_width is not None:
                 target_is_growing = previous_frame_width < newsize[0]
                 if target_is_growing and allow_grow_sound:
                     grow_sound.play()
-                    shrink_sound.stop()
                     allow_grow_sound = False
-                    allow_shrink_sound = True
-                elif not target_is_growing and allow_shrink_sound:
-                    shrink_sound.play()
+                elif not target_is_growing and not allow_grow_sound:
                     grow_sound.stop()
-                    allow_shrink_sound = False
                     allow_grow_sound = True
+                    # trigger calibration data collection once target has
+                    # shrunk enough
+                    collect_when_shrunk = True
             previous_frame_width = newsize[0]
         
         # get current target width 
@@ -279,10 +279,11 @@ def automated_calibration(
                 # boolean
                 current_point_index = -1
                 collect_when_shrunk = False
+                target_activated = False
         self.win.flip()
         # if calibration for current point is done, and there
         # are no points left to calibrate for, end calibration
-        if not collect_when_shrunk and not pos_nums:
+        if not target_activated and not pos_nums:
             in_calibration = False
 
 
