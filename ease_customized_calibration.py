@@ -51,7 +51,7 @@ grow_sound = sound.Sound(GROW_SOUND_PATH, secs=-1, stereo=True, hamming=True, na
 # setup the attention grabber during adjusting the participant's position
 grabber = visual.MovieStim3(
     win, 
-    "infant/teletubbies_intro.mp4", 
+    "infant/waybuloo_intro.mp4", 
     noAudio=False,
     size=(1280 * 2/3, 720 * 2/3)
 )
@@ -195,12 +195,17 @@ def automated_calibration(
     self,
     _focus_time=0.5,
     collect_key='space',
-    exit_key='return'):
+    exit_key='return',
+    cycles_before_calibrate=2):
     """
     This is an automated version of the above 'manual'
     calibration function. It is to be run the first time through -
     any following recalibrations are handled manually, ie
     by the experimenter.
+
+    'cycles_before_calibrate' specifies the number of grow/shrink cycles
+    each target should finish before it stops and calibration data are
+    recorded. This defaults to 2 cycles.
     """
     # boolean indicating if calibration data are to be collected
     # when target is shrunk to close to minimum size
@@ -227,6 +232,10 @@ def automated_calibration(
     # (eg '1', '2', ... '5')
     pos_nums = [str(x) for x in range(1, len(CALINORMP) + 1)]
     target_activated = False
+    # define 'cycle counter' that counts the number of grow/shrink cycles
+    # the target has finished
+    cycle_counter = 0
+
     while in_calibration:
         # if calibration hasn't already been set to trigger,
         # and there are still points left to calibrate with
@@ -247,20 +256,29 @@ def automated_calibration(
             self.targets[current_point_index].setSize(newsize)
             self.targets[current_point_index].draw()
             
-            # handle playing sounds if target started growing,
-            # and enable calibration trigger if target has started
-            # shrinking
+            # handle playing sound if target started growing,
             if previous_frame_width is not None:
                 target_is_growing = previous_frame_width < newsize[0]
                 if target_is_growing and allow_grow_sound:
                     grow_sound.play()
                     allow_grow_sound = False
                 elif not target_is_growing and not allow_grow_sound:
+                    # stop the 'growing sound' from playing, and switch 
+                    # boolean indicating that it's OK to start playing 
+                    # it again once the target starts growing again
                     grow_sound.stop()
                     allow_grow_sound = True
-                    # trigger calibration data collection once target has
-                    # shrunk enough
-                    collect_when_shrunk = True
+                    # increase cycle counter (note that this is done halfway 
+                    # through a cycle, to ensure that calibration trigger 
+                    # is switched on in time)
+                    cycle_counter += 1
+            # enable calibration trigger if on the last target grow/shrink
+            # cycle, meaning calibration data will be collected once target has
+            # shrunk enough
+            if cycle_counter >= cycles_before_calibrate:
+                collect_when_shrunk = True
+            # store target's current frame width for comparison during next
+            # loop iteration / frame handling
             previous_frame_width = newsize[0]
         
         # get current target width 
