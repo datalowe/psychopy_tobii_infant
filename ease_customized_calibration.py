@@ -38,7 +38,7 @@ GROW_SOUND_PATH = 'infant/target_sound.wav'
 ###############################################################################
 # Demo
 # create a Window to control the monitor
-win = visual.Window(size=(1920, 1080),
+win = visual.Window(size=DISPSIZE,
                     units='pix',
                     fullscr=True,
                     allowGUI=False,
