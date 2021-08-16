@@ -313,6 +313,7 @@ def automated_calibration(
                 current_point_index = -1
                 collect_when_shrunk = False
                 target_activated = False
+                cycle_counter = 0
         self.win.flip()
         # if calibration for current point is done, and there
         # are no points left to calibrate for, end calibration
