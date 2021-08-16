@@ -34,6 +34,13 @@ CALISTIMS = [
 ATTENTION_GRAB_KEY = 'a'
 # relative path to grow sound file
 GROW_SOUND_PATH = 'infant/target_sound.wav'
+# relative path to attention grabber movie file
+ATT_GRAB_MOVIE_PATH = "infant/waybuloo_intro.mp4"
+
+# grow sound audio volume (scale goes from 0 to 1)
+GROW_SOUND_VOLUME = 1
+# attention grabber video's audio volume (scale goes from 0 to 1)
+ATT_GRAB_VOLUME = 0.7
 
 ###############################################################################
 # Demo
@@ -46,13 +53,21 @@ win = visual.Window(size=DISPSIZE,
                     screen=1)
 
 # prepare the audio stimuli used in calibration
-grow_sound = sound.Sound(GROW_SOUND_PATH, secs=-1, stereo=True, hamming=True, name='grow_sound')
+grow_sound = sound.Sound(
+    GROW_SOUND_PATH, 
+    secs=-1, 
+    stereo=True, 
+    hamming=True, 
+    name='grow_sound',
+    volume=GROW_SOUND_VOLUME
+)
 
 # setup the attention grabber during adjusting the participant's position
 grabber = visual.MovieStim3(
     win, 
-    "infant/waybuloo_intro.mp4", 
+    ATT_GRAB_MOVIE_PATH, 
     noAudio=False,
+    volume=ATT_GRAB_VOLUME,
     size=(1280 * 2/3, 720 * 2/3)
 )
 
