@@ -8,12 +8,16 @@ from moviepy.config import get_setting
 
 from psychopy_tobii_infant import TobiiInfantController
 
-###############################################################################
-# Settings
+
+# ========================================
+# SETTINGS
+# ========================================
+# use PsychToolBox(PTB) audio engine
 prefs.hardware['audioLib'] = 'ptb'
 
-###############################################################################
-# Constants
+# ========================================
+# CONSTANTS
+# ========================================
 DIR = os.path.dirname(__file__)
 # size/resolution, in pixels, of monitor which __participant__ is to be looking at
 PARTICIPANT_DISPSIZE = (1920, 1080)
@@ -54,51 +58,25 @@ ATT_GRAB_MOVIE_PATH = "infant/waybuloo_intro.mp4"
 GROW_SOUND_VOLUME = 1
 
 # attention grabber video's audio volume (scale goes from 0 to 1)
-ATT_GRAB_VOLUME = 0.7
+ATT_GRAB_VOLUME = 0.5
 
-###############################################################################
-# create a Window to control the monitor which the participant is to be
-# looking at
-win = visual.Window(size=PARTICIPANT_DISPSIZE,
-                    units='pix',
-                    fullscr=True,
-                    allowGUI=False,
-                    color=[1, 1, 1],
-                    screen=1)
-# create a Window to control the monitor on which calibration results
-# are to be shown (ie experimenter's display)
-calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
-                    units='pix',
-                    fullscr=True,
-                    allowGUI=False,
-                    color=[1, 1, 1],
-                    screen=0)
+# maximum x/y coordinates of display that gaze target may be
+# positioned at during validation, after calibration is finished
+# (these maximum values are also 'flipped' by multiplying by -1 in
+# order to get minimum x/y coordinates)
+GAZE_TARGET_X_MAX = 600
+GAZE_TARGET_Y_MAX = 400
 
-# prepare the audio stimuli used in calibration
-grow_sounds = []
-for sound_path in GROW_SOUND_PATHS:
-    grow_sound = sound.Sound(
-        sound_path, 
-        secs=-1, 
-        stereo=True, 
-        hamming=True, 
-        name='grow_sound',
-        volume=GROW_SOUND_VOLUME
-    )
-    grow_sounds.append(grow_sound)
-# initialize global 'grow_sound' variable which initially points
-# at first of loaded grow sounds, but will be randomly updated
-grow_sound = grow_sounds[0]
+# speed of post-calibration validation target, in pixels/frame
+# (eg 5 pixels/frame means roughly 5*60=300 pixels/second)
+VALIDATION_MOVEMENT_SPEED = 5
 
-# setup the attention grabber during adjusting the participant's position
-grabber = visual.MovieStim3(
-    win, 
-    ATT_GRAB_MOVIE_PATH, 
-    noAudio=False,
-    volume=ATT_GRAB_VOLUME,
-    size=(1280 * 2/3, 720 * 2/3)
-)
-
+# ========================================
+# DEFINE FUNCTIONS
+# ========================================
+# (calibration) create a 'parent' function which will be given to the
+# psychopy_tobii_infant package 'core', and which makes use of custom
+# calibration procedures defined below
 def main_calibration(
     self,
     _focus_time=0.5,
@@ -129,8 +107,7 @@ def main_calibration(
             exit_key
         )
 
-# create a customized calibration procedure with sound
-# code snippets copied from _update_calibration_infant()
+# (calibration) create a customized calibration procedure with sound, etc.
 def manual_calibration(
     self,
     _focus_time=0.5,
@@ -235,6 +212,8 @@ def manual_calibration(
                 collect_when_shrunk = False
         self.win.flip()
 
+# (calibration) create an automated version of the above
+# custom calibration procedure
 def automated_calibration(
     self,
     _focus_time=0.5,
@@ -350,8 +329,113 @@ def automated_calibration(
         if not target_activated and not pos_nums:
             in_calibration = False
 
+# (validation) function for positioning target at starting position before
+# initiating smooth movement
+def place_target_at_start(movement_dir, target):
+    """
+    movement_dir: Direction of movement. Must be
+    one of 'LtR', 'TtB', 'RtL' or 'BtT'.
+    target: PsychoPy visual object, ie target object that is
+    to be moved.
+    """
+    if movement_dir == 'LtR':
+        x_pos = -GAZE_TARGET_X_MAX
+        y_pos = 0
+    elif movement_dir == 'RtL':
+        x_pos = GAZE_TARGET_X_MAX
+        y_pos = 0
+    elif movement_dir == 'TtB':
+        x_pos = 0
+        y_pos = GAZE_TARGET_Y_MAX
+    elif movement_dir == 'BtT':
+        x_pos = 0
+        y_pos = -GAZE_TARGET_Y_MAX
+    target.pos = (x_pos, y_pos)
+    return None
 
+# (validation) function for smoothly moving target.
+# returns True if target has finished
+# moving, otherwise False
+def smoothly_move_target(movement_dir, target, step_size):
+    """
+    movement_dir: Direction of movement. Must be
+    one of 'LtR', 'TtB', 'RtL' or 'BtT'.
+    target: PsychoPy visual object, ie target object that is
+    to be moved.
+    step_size: float value which indicates how large each 'step'
+    taken at each frame should be, in target object's units. Eg
+    if target uses unit 'pix' and passed step_size is 3.0,
+    target will move 3 pixels each frame.
+    """
+    x_pos, y_pos = target.pos
+    finished_moving = False
+    if movement_dir == 'LtR':
+        x_pos += step_size
+        y_pos = 0
+        if x_pos > GAZE_TARGET_X_MAX:
+            finished_moving = True
+    elif movement_dir == 'RtL':
+        x_pos -= step_size
+        y_pos = 0
+        if x_pos < -GAZE_TARGET_X_MAX:
+            finished_moving = True
+    elif movement_dir == 'TtB':
+        x_pos = 0
+        y_pos -= step_size
+        if y_pos < -GAZE_TARGET_Y_MAX:
+            finished_moving = True
+    elif movement_dir == 'BtT':
+        x_pos = 0
+        y_pos += step_size
+        if y_pos > GAZE_TARGET_Y_MAX:
+            finished_moving = True
+    target.pos = (x_pos, y_pos)
+    return finished_moving
 
+# ========================================
+# WINDOW, CONTROLLER & STIMULUS SETUP
+# ========================================
+# create a Window to control the monitor which the participant is to be
+# looking at
+win = visual.Window(size=PARTICIPANT_DISPSIZE,
+                    units='pix',
+                    fullscr=True,
+                    allowGUI=False,
+                    color=[1, 1, 1],
+                    screen=1)
+# create a Window to control the monitor on which calibration results
+# are to be shown (ie experimenter's display)
+calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
+                    units='pix',
+                    fullscr=True,
+                    allowGUI=False,
+                    color=[1, 1, 1],
+                    screen=0)
+
+# prepare the audio stimuli used in calibration
+grow_sounds = []
+for sound_path in GROW_SOUND_PATHS:
+    grow_sound = sound.Sound(
+        sound_path, 
+        secs=-1, 
+        stereo=True, 
+        hamming=True, 
+        name='grow_sound',
+        volume=GROW_SOUND_VOLUME
+    )
+    grow_sounds.append(grow_sound)
+# initialize global 'grow_sound' variable which initially points
+# at first of loaded grow sounds, but will be randomly updated
+grow_sound = grow_sounds[0]
+
+# setup the attention grabber during adjusting the participant's position
+grabber = visual.MovieStim3(
+    win, 
+    ATT_GRAB_MOVIE_PATH, 
+    noAudio=False,
+    volume=ATT_GRAB_VOLUME,
+    size=(1280 * 2/3, 720 * 2/3)
+)
 
 # initialize TobiiInfantController to communicate with the eyetracker
 controller = TobiiInfantController(
@@ -364,7 +448,11 @@ controller.update_calibration = types.MethodType(
     controller
 )
 
+# ========================================
+# POSITION PARTICIPANT
+# ========================================
 # setup the attention grabber during adjusting the participant's position
+# REPLACEME
 grabber.setAutoDraw(True)
 grabber.play()
 # show the relative position of the subject to the eyetracker
@@ -376,6 +464,10 @@ grabber.setAutoDraw(False)
 # pause movie, so that it can then be switched back to during calibration
 grabber.pause()
 
+
+# ========================================
+# RUN CALIBRATION
+# ========================================
 # How to use:
 # The first 'calibration run' is automated, just let it run.
 # Once the first calibration run has finished, you'll be presented
@@ -397,37 +489,197 @@ success = controller.run_calibration(CALIPOINTS, CALISTIMS, result_msg_color="bl
 if not success:
     core.quit()
 
-marker = visual.Rect(win, width=20, height=20, autoLog=False)
 
-# Start recording.
-# filename of the data file could be define in this method or when creating an
-# TobiiInfantController instance
-controller.start_recording('demo5-test.tsv')
-waitkey = True
-timer = core.Clock()
+# ========================================
+# RUN VALIDATION
+# ========================================
+# a marker that is to show to the experimenter where the participant
+# is looking
+gaze_marker = visual.Rect(
+    calibration_res_win, 
+    width=20, 
+    height=20, 
+    autoLog=False
+)
+# a target which the participant is to (if possible) track with their gaze
+gaze_target = visual.ImageStim(
+    win,
+    image=CALISTIMS[0],
+    autoLog=False
+)
 
-# Press space to leave
-while waitkey:
-    # Get the latest gaze position data.
-    currentGazePosition = controller.get_current_gaze_position()
+# start recording 
+controller.start_recording('ease_calibration_validation.tsv')
 
-    # The value is numpy.nan if Tobii failed to detect gaze position.
-    if np.nan not in currentGazePosition:
-        marker.setPos(currentGazePosition)
-        marker.setLineColor('black')
+# Find ratios between experimenter/participant display width/height
+disp_ratios = (
+    EXPERIMENTER_DISPSIZE[0] / PARTICIPANT_DISPSIZE[0],
+    EXPERIMENTER_DISPSIZE[1] / PARTICIPANT_DISPSIZE[1]
+)
+# Initialize list which will hold (euclidean) distances between
+# participant gaze and target position at each recording timepoint
+gaze_to_target_dists = []
+# Initialize list which will hold values which indicate if
+# participant gaze could be captured (1) or not (0) at each
+# recording timepoint
+gaze_on_screen_inds = []
+
+# initialize list which specifies gaze target movement directions
+# (eg 'LtR' for 'Left to Right', 'TtB' for 'Top to Bottom')
+original_target_dir_ls = [
+    'LtR',
+    'TtB',
+    'RtL',
+    'BtT'
+]
+# boolean for indicating if target is moving(True) or not (False)
+target_is_moving = False
+# boolean for indicating if validation is finished
+validation_is_finished = False
+
+# boolean which is to be set to False once
+# experimenter is satisfied with validation
+repeat_validation = True
+
+while repeat_validation:
+    # make a copy of list of gaze target movement directions,
+    # to enable popping off directions one by one (without
+    # modifying original list)
+    target_dir_ls = original_target_dir_ls[:]
+    # clear validation data, in case this is not the first
+    # validation run
+    gaze_to_target_dists.clear()
+    gaze_on_screen_inds.clear()
+    # keep going until target has finished all movements
+    while not validation_is_finished:
+        if not target_is_moving:
+            target_dir = target_dir_ls.pop()
+            place_target_at_start(target_dir, gaze_target)
+            target_is_moving = True
+            # play a random attention grabbing sound in conjunction
+            # with movement initialization
+            grow_sound.stop()
+            grow_sound = np.random.choice(grow_sounds)
+            grow_sound.play()
+
+        # move target a certain number of pixels before next frame, and
+        # and check if movement is finished
+        finished_moving = smoothly_move_target(
+            movement_dir=target_dir, 
+            target=gaze_target, 
+            step_size=VALIDATION_MOVEMENT_SPEED
+        )
+        if finished_moving:
+            target_is_moving = False
+
+        # Get the latest gaze position data.
+        currentGazePosition = controller.get_current_gaze_position()
+
+        # position and draw gaze target
+        gaze_target.draw()
+
+        # The value is numpy.nan if Tobii failed to detect gaze position.
+        if np.nan not in currentGazePosition:
+            gaze_x, gaze_y = currentGazePosition
+            # Scale the gaze position data according to the ratios between
+            # experimenter/participant display width/height
+            rescaled_gaze_x, rescaled_gaze_y = (
+                gaze_x * disp_ratios[0],
+                gaze_y * disp_ratios[1]
+            )
+            # show experimenter where gaze is directed
+            gaze_marker.setPos((rescaled_gaze_x, rescaled_gaze_y))
+            gaze_marker.setLineColor('black')
+            # indicate that gaze was recorded
+            gaze_on_screen_inds.append(1)
+            
+            # calculate and store euclidean distance from
+            # gaze to target (using Pythagora's here)
+            delta_x = gaze_x - gaze_target.pos[0]
+            delta_y = gaze_y - gaze_target.pos[1]
+            euc_dist = np.sqrt(delta_x**2 + delta_y**2)
+            gaze_to_target_dists.append(euc_dist)
+        else:
+            gaze_marker.setLineColor('red')
+            # indicate that gaze was __not__ recorded
+            gaze_on_screen_inds.append(0)
+
+        gaze_marker.draw()
+        calibration_res_win.flip()
+        win.flip()
+
+        # if there are no movement directions left, and
+        # there is no ongoing movement, stop the validation
+        if not target_dir_ls and not target_is_moving:
+            validation_is_finished = True
+            # clear participant screen
+            win.flip()
+
+
+    wait_for_press = True
+    # show mean/standard deviation of registered euclidean distances,
+    # and proportion of timepoints where participant gaze
+    # was recorded
+    if gaze_to_target_dists:
+        mean_target_dist = np.mean(gaze_to_target_dists)
+        var_target_dist = np.std(gaze_to_target_dists)
     else:
-        marker.setLineColor('red')
-    keys = event.getKeys()
-    if 'space' in keys:
-        waitkey = False
-    elif len(keys) >= 1:
-        # Record the pressed key to the data file.
-        controller.record_event(keys[0])
-        print('pressed {k} at {t} ms'.format(k=keys[0],
-                                             t=timer.getTime() * 1000))
+        # if for some reason no distances were calculated/recorded,
+        # mark the value as missing
+        mean_target_dist = np.nan
+    if gaze_on_screen_inds:
+        prop_on_screen = sum(gaze_on_screen_inds) / len(gaze_on_screen_inds)
+    else:
+        prop_on_screen = np.nan
 
-    marker.draw()
-    win.flip()
+    # put together message to experimenter about validation results
+    if mean_target_dist is np.nan:
+        mean_dist_msg = (
+            "Could not record any distances. "
+            "Please repeat calibration/validation."
+        )
+        var_dist_msg = ""
+    else:
+        mean_dist_msg = round(mean_target_dist, 5)
+        var_dist_msg = round(var_target_dist, 5)
+
+    if prop_on_screen is np.nan:
+        prop_screen_msg = (
+            "Could not record whether participant "
+            "was looking at screen or not."
+            "Please repeat calibration/validation."
+        )
+    else:
+        prop_screen_msg = round(prop_on_screen*100, 5)
+    res_message = (
+        "Validation results:\n\n"
+        "Mean distance (in pixels) between gaze and target:\n"
+        f"{mean_dist_msg}\n\n"
+        "Standard deviation of distance (in pixels) between gaze and target:\n"
+        f"{var_dist_msg}\n\n"
+        "Proportion of time participant looked at screen during validation\n"
+        f"{prop_screen_msg}%\n\n"
+        "Press SPACE to end validation, or R to repeat it."
+    )
+    res_txt = visual.TextStim(
+        win=calibration_res_win,
+        text=res_message,
+        pos=(0, 0),
+        color="black",
+        units="pix",
+        alignText="center",
+        autoLog=False,
+    )
+    res_txt.draw()
+    calibration_res_win.flip()
+    while wait_for_press:
+        keys = event.getKeys()
+        if 'space' in keys:
+            wait_for_press = False
+            repeat_validation = False
+        elif 'r' in keys or 'R' in keys:
+            wait_for_press = False
+            validation_is_finished = False
 
 # stop recording
 controller.stop_recording()
