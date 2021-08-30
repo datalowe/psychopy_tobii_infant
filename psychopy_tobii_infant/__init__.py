@@ -30,6 +30,9 @@ class TobiiController:
 
     Args:
         win: psychopy.visual.Window object.
+        calibration_res_win: (optional) psychopy.visual.Window object,
+            specifically for displaying calibration results on separate screen.
+            defaults to using 'win' for showing calibration results, too.
         id: the id of eyetracker. Default is 0 (use the first found eye
             tracker).
         filename: the name of the data file.
@@ -106,9 +109,22 @@ class TobiiController:
     datafile = None
     validation_result_buffers = None
 
-    def __init__(self, win, id=0, filename="gaze_TOBII_output.tsv"):
+    def __init__(
+        self, 
+        win,
+        calibration_res_win = None, 
+        id=0, 
+        filename="gaze_TOBII_output.tsv"
+    ):
         self.eyetracker_id = id
         self.win = win
+        # if no calibration results window is specified, use
+        # the 'win' window for showing calibration results
+        if calibration_res_win is None:
+            print('calibration_res_win is', calibration_res_win)
+            self.calibration_res_win = win
+        else:
+            self.calibration_res_win = calibration_res_win
         self.filename = filename
         # FIXME: self.numkey_dict is not updated accordingly
         self.numkey_dict = self._default_numkey_dict
@@ -867,7 +883,7 @@ class TobiiController:
     def _show_calibration_result(self):
         img = Image.new("RGBA", tuple(self.win.size))
         img_draw = ImageDraw.Draw(img)
-        result_img = visual.SimpleImageStim(self.win, img, autoLog=False)
+        result_img = visual.SimpleImageStim(self.calibration_res_win, img, autoLog=False)
         img_draw.rectangle(((0, 0), tuple(self.win.size)), fill=(0, 0, 0, 0))
         if self.calibration_result.status == tr.CALIBRATION_STATUS_FAILURE:
             # computeCalibration failed.
@@ -1084,6 +1100,9 @@ class TobiiInfantController(TobiiController):
 
     Args:
         win: psychopy.visual.Window object.
+        calibration_res_win: (optional) psychopy.visual.Window object,
+            specifically for displaying calibration results on separate screen.
+            defaults to using 'win' for showing calibration results, too.
         id: the id of eyetracker.
         filename: the name of the data file.
 
@@ -1092,8 +1111,14 @@ class TobiiInfantController(TobiiController):
             Default is 1.
         numkey_dict: keys used for calibration. Default is the number pad.
     """
-    def __init__(self, win, id=0, filename="gaze_TOBII_output.tsv"):
-        super().__init__(win, id, filename)
+    def __init__(
+        self, 
+        win,
+        calibration_res_win=None,
+        id=0, 
+        filename="gaze_TOBII_output.tsv"
+    ):
+        super().__init__(win, calibration_res_win, id, filename)
         self.update_calibration = self._update_calibration_infant
         # slower for infants
         self.shrink_speed = 1
@@ -1222,7 +1247,7 @@ class TobiiInfantController(TobiiController):
 
         self.target_original_size = self.targets[0].size
         self.retry_marker = visual.Circle(
-            self.win,
+            self.calibration_res_win,
             radius=self.calibration_dot_size,
             fillColor=self.calibration_dot_color,
             lineColor=self.calibration_disc_color,
@@ -1232,7 +1257,7 @@ class TobiiInfantController(TobiiController):
             self.retry_marker.setSize(
                 [float(self.win.size[1]) / self.win.size[0], 1.0])
         result_msg = visual.TextStim(
-            self.win,
+            self.calibration_res_win,
             pos=(0, -self.win.size[1] / 4),
             color=result_msg_color,
             units="pix",
@@ -1255,7 +1280,8 @@ class TobiiInfantController(TobiiController):
                 self.original_calibration_points[x] for x in self.retry_points
             ]
 
-            # clear the display
+            # clear the (participant-facing, if using separate display for
+            # calibration results) display
             self.win.flip()
             self.update_calibration(_focus_time=focus_time)
             self.calibration_result = self.calibration.compute_and_apply()
@@ -1296,9 +1322,12 @@ class TobiiInfantController(TobiiController):
                         self.retry_marker.draw()
 
                 result_msg.draw()
-                self.win.flip()
+                self.calibration_res_win.flip()
 
             if key == decision_key:
+                # if a separate display is used for displaying calibration
+                # results, clear it
+                self.calibration_res_win.flip()
                 if len(self.retry_points) == 0:
                     retval = True
                     in_calibration_loop = False

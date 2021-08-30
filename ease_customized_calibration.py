@@ -15,52 +15,80 @@ prefs.hardware['audioLib'] = 'ptb'
 ###############################################################################
 # Constants
 DIR = os.path.dirname(__file__)
-# users should know the display well.
-DISPSIZE = (1920, 1080)
+# size/resolution, in pixels, of monitor which __participant__ is to be looking at
+PARTICIPANT_DISPSIZE = (1920, 1080)
+# size/resolution, in pixels, of monitor which __experimenter__ is to be looking at
+# when checking calibration results
+EXPERIMENTER_DISPSIZE = (1920, 1080)
+
 # define calibration points
 CALINORMP = [(-0.4, 0.4), (-0.4, -0.4), (0.0, 0.0), (0.4, 0.4), (0.4, -0.4)]
-CALIPOINTS = [(x * DISPSIZE[0], y * DISPSIZE[1]) for x, y in CALINORMP]
+CALIPOINTS = [(x * PARTICIPANT_DISPSIZE[0], y * PARTICIPANT_DISPSIZE[1]) for x, y in CALINORMP]
+
 # stimuli to use in calibration
 # The number of stimuli must be the same or larger than the calibration points.
 CALISTIMS = [
     'infant/{}'.format(x) for x in os.listdir(os.path.join(DIR, 'infant'))
     if x.endswith('.png') and not x.startswith('.')
 ]
+
 # keyboard key that is to be used, during calibration, for temporarily switching 
 # back to the attention grabber movie, if the child seems to lose all interest
 # in the screen. pick **a letter** here, since the code below ensures that
 # both upper-and lowercase versions of the letter (eg 'a' or 'A') are checked
 # for, to avoid issues with caps lock
 ATTENTION_GRAB_KEY = 'a'
-# relative path to grow sound file
-GROW_SOUND_PATH = 'infant/target_sound.wav'
+
+# relative paths to target ('grow') sounds, which are randomly sampled from
+GROW_SOUND_PATHS = [
+    'infant/target_sound1.wav',
+    'infant/target_sound2.wav',
+    'infant/target_sound3.wav',
+    'infant/target_sound4.wav'
+]
+
 # relative path to attention grabber movie file
 ATT_GRAB_MOVIE_PATH = "infant/waybuloo_intro.mp4"
 
 # grow sound audio volume (scale goes from 0 to 1)
 GROW_SOUND_VOLUME = 1
+
 # attention grabber video's audio volume (scale goes from 0 to 1)
 ATT_GRAB_VOLUME = 0.7
 
 ###############################################################################
-# Demo
-# create a Window to control the monitor
-win = visual.Window(size=DISPSIZE,
+# create a Window to control the monitor which the participant is to be
+# looking at
+win = visual.Window(size=PARTICIPANT_DISPSIZE,
                     units='pix',
                     fullscr=True,
                     allowGUI=False,
                     color=[1, 1, 1],
                     screen=1)
+# create a Window to control the monitor on which calibration results
+# are to be shown (ie experimenter's display)
+calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
+                    units='pix',
+                    fullscr=True,
+                    allowGUI=False,
+                    color=[1, 1, 1],
+                    screen=0)
 
 # prepare the audio stimuli used in calibration
-grow_sound = sound.Sound(
-    GROW_SOUND_PATH, 
-    secs=-1, 
-    stereo=True, 
-    hamming=True, 
-    name='grow_sound',
-    volume=GROW_SOUND_VOLUME
-)
+grow_sounds = []
+for sound_path in GROW_SOUND_PATHS:
+    grow_sound = sound.Sound(
+        sound_path, 
+        secs=-1, 
+        stereo=True, 
+        hamming=True, 
+        name='grow_sound',
+        volume=GROW_SOUND_VOLUME
+    )
+    grow_sounds.append(grow_sound)
+# initialize global 'grow_sound' variable which initially points
+# at first of loaded grow sounds, but will be randomly updated
+grow_sound = grow_sounds[0]
 
 # setup the attention grabber during adjusting the participant's position
 grabber = visual.MovieStim3(
@@ -181,6 +209,7 @@ def manual_calibration(
             if previous_frame_width is not None:
                 target_is_growing = previous_frame_width < newsize[0]
                 if target_is_growing and allow_grow_sound:
+                    grow_sound = np.random.choice(grow_sounds)
                     grow_sound.play()
                     allow_grow_sound = False
                 elif not target_is_growing and not allow_grow_sound:
@@ -271,10 +300,11 @@ def automated_calibration(
             self.targets[current_point_index].setSize(newsize)
             self.targets[current_point_index].draw()
             
-            # handle playing sound if target started growing,
+            # handle playing sound if target started growing
             if previous_frame_width is not None:
                 target_is_growing = previous_frame_width < newsize[0]
                 if target_is_growing and allow_grow_sound:
+                    grow_sound = np.random.choice(grow_sounds)
                     grow_sound.play()
                     allow_grow_sound = False
                 elif not target_is_growing and not allow_grow_sound:
@@ -324,7 +354,10 @@ def automated_calibration(
 
 
 # initialize TobiiInfantController to communicate with the eyetracker
-controller = TobiiInfantController(win)
+controller = TobiiInfantController(
+    win=win, 
+    calibration_res_win=calibration_res_win
+)
 # use the customized calibration
 controller.update_calibration = types.MethodType(
     main_calibration,
