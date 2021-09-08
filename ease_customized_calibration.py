@@ -421,13 +421,20 @@ data_dir_path = os.path.join(DIR, 'participant_data')
 if not os.path.isdir(data_dir_path):
     os.mkdir(data_dir_path)
 
+# form paths to calibration-related data files
 vdata_file_name = '{}_{}_{}_validation_data.csv'.format(
     expInfo['participant_code'],
     expInfo['expName'],
     expInfo['date']
 )
-
+rdata_file_name = '{}_{}_{}_experimenter_ratings.csv'.format(
+    expInfo['participant_code'],
+    expInfo['expName'],
+    expInfo['date']
+)
 vdata_file_path = os.path.join(data_dir_path, vdata_file_name)
+rdata_file_path = os.path.join(data_dir_path, rdata_file_name)
+
 
 # ========================================
 # WINDOW, CONTROLLER & STIMULUS SETUP
@@ -769,6 +776,93 @@ val_df = pd.DataFrame({
     'proportion_of_time_gaze_on_screen': [prop_on_screen]
 })
 val_df.to_csv(vdata_file_path, index=False)
+
+# ========================================
+# ASK EXPERIMENTER ABOUT CALIBRATION
+# ========================================
+# put together components needed for interface through
+# which experimenter answers questions about experiment
+slider_q = visual.Slider(win=calibration_res_win, name='slider_q',
+    startValue=None, size=(800.0, 80), pos=(0, -100), units=None,
+    labels=["Rörde sig inte alls", "I rörelse hela tiden"], ticks=(0, 10), granularity=0.0,
+    style='rating', styleTweaks=(), opacity=None,
+    color='Black', fillColor='Red', borderColor='Black', colorSpace='rgb',
+    font='Open Sans', labelHeight=40.0,
+    flip=False, depth=0, readOnly=False)
+
+text_q = visual.TextStim(win=calibration_res_win, name='text_q',
+    text='Hur mycket rörde sig deltagaren under experimentet?\n(tryck space för att bekräfta)',
+    font='Open Sans',
+    pos=(0, 200), height=40.0, wrapWidth=800.0, ori=0.0, 
+    color='black', colorSpace='rgb', opacity=None, 
+    languageStyle='LTR',
+    depth=-2.0)
+
+button_q_confirm = visual.ButtonStim(win=calibration_res_win, 
+    text='Bekräfta', font='Arvo',
+    pos=(0, -400),
+    letterHeight=20.0,
+    size=(120, 60), borderWidth=0.0,
+    fillColor='black', borderColor=None,
+    color='white', colorSpace='rgb',
+    opacity=1.0,
+    bold=True, italic=False,
+    padding=None,
+    anchor='center',
+    name='button_q_confirm'
+)
+
+textbox_q = visual.TextBox2(
+     win, text=None, font='Open Sans',
+     pos=(-500, 50),     letterHeight=30.0,
+     size=(1000, 350), borderWidth=10.0,
+     color='black', colorSpace='rgb',
+     opacity=None,
+     bold=False, italic=False,
+     lineSpacing=1.0,
+     padding=None,
+     anchor='top-left',
+     fillColor=None, borderColor='red',
+     flipHoriz=False, flipVert=False,
+     editable=True,
+     name='textbox_q',
+     autoLog=False,
+)
+
+mouse_q = event.Mouse(win=calibration_res_win)
+prevButtonState = []
+
+# ask about participant movement during calibration
+wait_confirmation = True
+while wait_confirmation:
+    slider_q.draw()
+    text_q.draw()
+    calibration_res_win.flip()
+    keys = event.getKeys()
+    if 'space' in keys and slider_q.getRating():
+        movement_rating = slider_q.getRating()
+        wait_confirmation = False
+        calibration_res_win.flip()
+
+# ask for free-text comments about calibration
+wait_confirmation = True
+# update question text
+while wait_confirmation:
+    button_q_confirm.draw()
+    text_q.draw()
+    calibration_res_win.flip()
+    buttons = mouse_q.getPressed()
+    if buttons != prevButtonState:
+        prevButtonState = buttons
+        if sum(buttons) > 0 and button_q_confirm.contains(mouse_q):
+            experimenter_comments = textbox_q.text
+
+# save experimenter rating/comments data
+exp_rating_df = pd.DataFrame({
+    'movement_rating': [movement_rating],
+    'experimenter_comments': [experimenter_comments],
+})
+exp_rating_df.to_csv(rdata_file_path, index=False)
 
 # stop recording
 controller.stop_recording()
