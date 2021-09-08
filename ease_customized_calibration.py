@@ -428,7 +428,8 @@ for sound_path in GROW_SOUND_PATHS:
 # at first of loaded grow sounds, but will be randomly updated
 grow_sound = grow_sounds[0]
 
-# setup the attention grabber during adjusting the participant's position
+# setup the attention grabber to be shown while adjusting the
+# participant's position
 grabber = visual.MovieStim3(
     win, 
     ATT_GRAB_MOVIE_PATH, 
@@ -449,10 +450,53 @@ controller.update_calibration = types.MethodType(
 )
 
 # ========================================
+# REMIND EXPERIMENTER ABOUT VOLUME
+# ========================================
+# the experimenter needs to make sure that
+# computer audio is set to a certain volume.
+# here, a message is displayed on the experimenter's
+# screen until they either hit 'space' to proceed,
+# or 'Esc' to abort (so that they can update
+# audio settings and come back)
+
+# form message to be shown to experimenter
+experimenter_msg = visual.TextStim(
+    win=calibration_res_win,
+    text=(
+        "Har du kontrollerat datorns ljud-/volyminställningar?\n\n"
+        "Om du INTE kontrollerat ljudet, tryck ESCAPE för att avbryta kalibreringen.\n"
+        "Om du HAR kontrollerat ljudet, tryck SPACE för att fortsätta kalibreringen.\n"
+    ),
+    pos=(0, 0),
+    color=[-1, -1, -1],
+    units='pix',
+    height=40
+)
+
+wait_confirmation = True
+while wait_confirmation:
+    experimenter_msg.draw()
+    calibration_res_win.flip()
+    keys = event.getKeys()
+    if 'space' in keys:
+        wait_confirmation = False
+        calibration_res_win.flip()
+    elif 'Esc' in keys:
+        calibration_res_win.flip()
+        # stop recording
+        controller.stop_recording()
+        # close file
+        controller.close()
+        # close experiment windows
+        win.close()
+        calibration_res_win.close()
+        # close PsychoPy
+        core.quit()
+
+# ========================================
 # POSITION PARTICIPANT
 # ========================================
-# setup the attention grabber during adjusting the participant's position
-# REPLACEME
+# show attention grabber
 grabber.setAutoDraw(True)
 grabber.play()
 # show the relative position of the subject to the eyetracker
@@ -686,5 +730,9 @@ controller.stop_recording()
 # close the file
 controller.close()
 
+# close experiment windows
 win.close()
+calibration_res_win.close()
+
+# close PsychoPy
 core.quit()
