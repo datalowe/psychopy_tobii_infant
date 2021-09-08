@@ -2,7 +2,11 @@ import os
 import types
 
 import numpy as np
-from psychopy import core, event, sound, visual, prefs
+
+import pandas as pd
+
+from psychopy import core, data, event, gui, prefs, sound, visual
+import psychopy
 
 from moviepy.config import get_setting
 
@@ -18,7 +22,10 @@ prefs.hardware['audioLib'] = 'ptb'
 # ========================================
 # CONSTANTS
 # ========================================
-DIR = os.path.dirname(__file__)
+# this isn't really a constant, but is included
+# here to keep consistent with original 'psychopy_tobii_infant' package
+# scripts
+DIR = os.path.dirname(os.path.abspath(__file__))
 # size/resolution, in pixels, of monitor which __participant__ is to be looking at
 PARTICIPANT_DISPSIZE = (1920, 1080)
 # size/resolution, in pixels, of monitor which __experimenter__ is to be looking at
@@ -393,6 +400,36 @@ def smoothly_move_target(movement_dir, target, step_size):
     return finished_moving
 
 # ========================================
+# COLLECT PARTICIPANT/SESSION DATA
+# ========================================
+expInfo = {'participant_code': ''}
+dlg = gui.DlgFromDict(dictionary=expInfo, sortKeys=False, title='ease_et_calibration')
+# did experimenter press 'cancel' in dialog?
+if dlg.OK is False:
+    core.quit()
+expInfo['date'] = data.getDateStr()
+expInfo['expName'] = 'ease_et_calibration'
+expInfo['psychopyVersion'] = psychopy.__version__
+
+# make sure this script's parent directory
+# is the working directory at runtime
+os.chdir(DIR)
+
+# make sure that the participant_data directory
+# exists
+data_dir_path = os.path.join(DIR, 'participant_data')
+if not os.path.isdir(data_dir_path):
+    os.mkdir(data_dir_path)
+
+vdata_file_name = '{}_{}_{}_validation_data.csv'.format(
+    expInfo['participant_code'],
+    expInfo['expName'],
+    expInfo['date']
+)
+
+vdata_file_path = os.path.join(data_dir_path, vdata_file_name)
+
+# ========================================
 # WINDOW, CONTROLLER & STIMULUS SETUP
 # ========================================
 # create a Window to control the monitor which the participant is to be
@@ -724,6 +761,14 @@ while repeat_validation:
         elif 'r' in keys or 'R' in keys:
             wait_for_press = False
             validation_is_finished = False
+
+# save validation data
+val_df = pd.DataFrame({
+    'mean_distance_gaze_to_target': [mean_target_dist],
+    'variance_distance_gaze_to_target': [var_target_dist],
+    'proportion_of_time_gaze_on_screen': [prop_on_screen]
+})
+val_df.to_csv(vdata_file_path, index=False)
 
 # stop recording
 controller.stop_recording()
