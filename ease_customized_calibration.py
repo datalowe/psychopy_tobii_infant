@@ -437,7 +437,7 @@ rdata_file_path = os.path.join(data_dir_path, rdata_file_name)
 
 
 # ========================================
-# WINDOW, CONTROLLER & STIMULUS SETUP
+# WINDOW & STIMULUS SETUP
 # ========================================
 # create a Window to control the monitor which the participant is to be
 # looking at
@@ -447,6 +447,7 @@ win = visual.Window(size=PARTICIPANT_DISPSIZE,
                     allowGUI=False,
                     color=[1, 1, 1],
                     screen=1)
+
 # create a Window to control the monitor on which calibration results
 # are to be shown (ie experimenter's display)
 calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
@@ -455,6 +456,7 @@ calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
                     allowGUI=False,
                     color=[1, 1, 1],
                     screen=0)
+
 
 # prepare the audio stimuli used in calibration
 grow_sounds = []
@@ -480,17 +482,6 @@ grabber = visual.MovieStim3(
     noAudio=False,
     volume=ATT_GRAB_VOLUME,
     size=(1280 * 2/3, 720 * 2/3)
-)
-
-# initialize TobiiInfantController to communicate with the eyetracker
-controller = TobiiInfantController(
-    win=win, 
-    calibration_res_win=calibration_res_win
-)
-# use the customized calibration
-controller.update_calibration = types.MethodType(
-    main_calibration,
-    controller
 )
 
 # ========================================
@@ -525,17 +516,27 @@ while wait_confirmation:
     if 'space' in keys:
         wait_confirmation = False
         calibration_res_win.flip()
-    elif 'Esc' in keys:
+    elif 'escape' in keys:
         calibration_res_win.flip()
-        # stop recording
-        controller.stop_recording()
-        # close file
-        controller.close()
         # close experiment windows
         win.close()
         calibration_res_win.close()
         # close PsychoPy
         core.quit()
+
+# ========================================
+# CONTROLLER SETUP
+# ========================================
+# initialize TobiiInfantController to communicate with the eyetracker
+controller = TobiiInfantController(
+    win=win, 
+    calibration_res_win=calibration_res_win
+)
+# use the customized calibration
+controller.update_calibration = types.MethodType(
+    main_calibration,
+    controller
+)
 
 # ========================================
 # POSITION PARTICIPANT
@@ -813,7 +814,7 @@ button_q_confirm = visual.ButtonStim(win=calibration_res_win,
 )
 
 textbox_q = visual.TextBox2(
-     win, text=None, font='Open Sans',
+     win=calibration_res_win, text=None, font='Open Sans',
      pos=(-500, 50),     letterHeight=30.0,
      size=(1000, 350), borderWidth=10.0,
      color='black', colorSpace='rgb',
@@ -829,9 +830,6 @@ textbox_q = visual.TextBox2(
      autoLog=False,
 )
 
-mouse_q = event.Mouse(win=calibration_res_win)
-prevButtonState = []
-
 # ask about participant movement during calibration
 wait_confirmation = True
 while wait_confirmation:
@@ -846,16 +844,23 @@ while wait_confirmation:
 
 # ask for free-text comments about calibration
 wait_confirmation = True
+# mouse_q = event.Mouse(win=calibration_res_win)
+prevButtonState = []
 # update question text
+text_q.text = "Vänligen mata in övriga kommentarer om experimentet."
 while wait_confirmation:
     button_q_confirm.draw()
     text_q.draw()
+    textbox_q.draw()
     calibration_res_win.flip()
-    buttons = mouse_q.getPressed()
-    if buttons != prevButtonState:
-        prevButtonState = buttons
-        if sum(buttons) > 0 and button_q_confirm.contains(mouse_q):
-            experimenter_comments = textbox_q.text
+    if button_q_confirm.isClicked:
+        experimenter_comments = textbox_q.text
+        wait_confirmation = False
+    # buttons = mouse_q.getPressed()
+    # if buttons != prevButtonState:
+    #     prevButtonState = buttons
+    #     if sum(buttons) > 0 and button_q_confirm.contains(mouse_q):
+    #         experimenter_comments = textbox_q.text
 
 # save experimenter rating/comments data
 exp_rating_df = pd.DataFrame({
