@@ -427,13 +427,7 @@ vdata_file_name = '{}_{}_{}_validation_data.csv'.format(
     expInfo['expName'],
     expInfo['date']
 )
-rdata_file_name = '{}_{}_{}_experimenter_ratings.csv'.format(
-    expInfo['participant_code'],
-    expInfo['expName'],
-    expInfo['date']
-)
 vdata_file_path = os.path.join(data_dir_path, vdata_file_name)
-rdata_file_path = os.path.join(data_dir_path, rdata_file_name)
 
 
 # ========================================
