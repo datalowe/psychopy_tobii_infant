@@ -705,7 +705,7 @@ while repeat_validation:
     # was recorded
     if gaze_to_target_dists:
         mean_target_dist = np.mean(gaze_to_target_dists)
-        var_target_dist = np.std(gaze_to_target_dists)
+        std_target_dist = np.std(gaze_to_target_dists)
     else:
         # if for some reason no distances were calculated/recorded,
         # mark the value as missing
@@ -721,10 +721,10 @@ while repeat_validation:
             "Could not record any distances. "
             "Please repeat calibration/validation."
         )
-        var_dist_msg = ""
+        std_dist_msg = ""
     else:
         mean_dist_msg = round(mean_target_dist, 5)
-        var_dist_msg = round(var_target_dist, 5)
+        std_dist_msg = round(std_target_dist, 5)
 
     if prop_on_screen is np.nan:
         prop_screen_msg = (
@@ -739,7 +739,7 @@ while repeat_validation:
         "Mean distance (in pixels) between gaze and target:\n"
         f"{mean_dist_msg}\n\n"
         "Standard deviation of distance (in pixels) between gaze and target:\n"
-        f"{var_dist_msg}\n\n"
+        f"{std_dist_msg}\n\n"
         "Proportion of time participant looked at screen during validation\n"
         f"{prop_screen_msg}%\n\n"
         "Press SPACE to end validation, or R to repeat it."
@@ -767,7 +767,7 @@ while repeat_validation:
 # save validation data
 val_df = pd.DataFrame({
     'mean_distance_gaze_to_target': [mean_target_dist],
-    'variance_distance_gaze_to_target': [var_target_dist],
+    'std_distance_gaze_to_target': [std_target_dist],
     'proportion_of_time_gaze_on_screen': [prop_on_screen]
 })
 val_df.to_csv(vdata_file_path, index=False)
