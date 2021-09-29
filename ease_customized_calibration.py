@@ -2,7 +2,11 @@ import os
 import types
 
 import numpy as np
-from psychopy import core, event, sound, visual, prefs
+
+import pandas as pd
+
+from psychopy import core, data, event, gui, prefs, sound, visual
+import psychopy
 
 from moviepy.config import get_setting
 
@@ -18,7 +22,10 @@ prefs.hardware['audioLib'] = 'ptb'
 # ========================================
 # CONSTANTS
 # ========================================
-DIR = os.path.dirname(__file__)
+# this isn't really a constant, but is included
+# here to keep consistent with original 'psychopy_tobii_infant' package
+# scripts
+DIR = os.path.dirname(os.path.abspath(__file__))
 # size/resolution, in pixels, of monitor which __participant__ is to be looking at
 PARTICIPANT_DISPSIZE = (1920, 1080)
 # size/resolution, in pixels, of monitor which __experimenter__ is to be looking at
@@ -393,7 +400,44 @@ def smoothly_move_target(movement_dir, target, step_size):
     return finished_moving
 
 # ========================================
-# WINDOW, CONTROLLER & STIMULUS SETUP
+# COLLECT PARTICIPANT/SESSION DATA
+# ========================================
+expInfo = {'participant_code': ''}
+dlg = gui.DlgFromDict(dictionary=expInfo, sortKeys=False, title='ease_et_calibration')
+# did experimenter press 'cancel' in dialog?
+if dlg.OK is False:
+    core.quit()
+expInfo['date'] = data.getDateStr()
+expInfo['expName'] = 'ease_et_calibration'
+expInfo['psychopyVersion'] = psychopy.__version__
+
+# make sure this script's parent directory
+# is the working directory at runtime
+os.chdir(DIR)
+
+# make sure that the participant_data directory
+# exists
+data_dir_path = os.path.join(DIR, 'participant_data')
+if not os.path.isdir(data_dir_path):
+    os.mkdir(data_dir_path)
+
+# form paths to calibration-related data files
+vdata_file_name = '{}_{}_{}_validation_data.csv'.format(
+    expInfo['participant_code'],
+    expInfo['expName'],
+    expInfo['date']
+)
+rdata_file_name = '{}_{}_{}_experimenter_ratings.csv'.format(
+    expInfo['participant_code'],
+    expInfo['expName'],
+    expInfo['date']
+)
+vdata_file_path = os.path.join(data_dir_path, vdata_file_name)
+rdata_file_path = os.path.join(data_dir_path, rdata_file_name)
+
+
+# ========================================
+# WINDOW & STIMULUS SETUP
 # ========================================
 # create a Window to control the monitor which the participant is to be
 # looking at
@@ -403,6 +447,7 @@ win = visual.Window(size=PARTICIPANT_DISPSIZE,
                     allowGUI=False,
                     color=[1, 1, 1],
                     screen=1)
+
 # create a Window to control the monitor on which calibration results
 # are to be shown (ie experimenter's display)
 calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
@@ -411,6 +456,7 @@ calibration_res_win = visual.Window(size=EXPERIMENTER_DISPSIZE,
                     allowGUI=False,
                     color=[1, 1, 1],
                     screen=0)
+
 
 # prepare the audio stimuli used in calibration
 grow_sounds = []
@@ -428,7 +474,8 @@ for sound_path in GROW_SOUND_PATHS:
 # at first of loaded grow sounds, but will be randomly updated
 grow_sound = grow_sounds[0]
 
-# set up the attention grabber during adjusting the participant's position
+# setup the attention grabber to be shown while adjusting the
+# participant's position
 grabber = visual.MovieStim3(
     win, 
     ATT_GRAB_MOVIE_PATH, 
@@ -447,6 +494,49 @@ end_positioning_txt = visual.TextStim(
     autoLog=False,
 )
 
+# ========================================
+# REMIND EXPERIMENTER ABOUT VOLUME
+# ========================================
+# the experimenter needs to make sure that
+# computer audio is set to a certain volume.
+# here, a message is displayed on the experimenter's
+# screen until they either hit 'space' to proceed,
+# or 'Esc' to abort (so that they can update
+# audio settings and come back)
+
+# form message to be shown to experimenter
+experimenter_msg = visual.TextStim(
+    win=calibration_res_win,
+    text=(
+        "Har du kontrollerat datorns ljud-/volyminställningar?\n\n"
+        "Om du INTE kontrollerat ljudet, tryck ESCAPE för att avbryta kalibreringen.\n"
+        "Om du HAR kontrollerat ljudet, tryck SPACE för att fortsätta kalibreringen.\n"
+    ),
+    pos=(0, 0),
+    color=[-1, -1, -1],
+    units='pix',
+    height=40
+)
+
+wait_confirmation = True
+while wait_confirmation:
+    experimenter_msg.draw()
+    calibration_res_win.flip()
+    keys = event.getKeys()
+    if 'space' in keys:
+        wait_confirmation = False
+        calibration_res_win.flip()
+    elif 'escape' in keys:
+        calibration_res_win.flip()
+        # close experiment windows
+        win.close()
+        calibration_res_win.close()
+        # close PsychoPy
+        core.quit()
+
+# ========================================
+# CONTROLLER SETUP
+# ========================================
 # initialize TobiiInfantController to communicate with the eyetracker
 controller = TobiiInfantController(
     win=win, 
@@ -461,7 +551,7 @@ controller.update_calibration = types.MethodType(
 # ========================================
 # POSITION PARTICIPANT
 # ========================================
-# setup the attention grabber during adjusting the participant's position
+# show attention grabber
 grabber.setAutoDraw(True)
 grabber.play()
 end_positioning_txt.setAutoDraw(True)
@@ -692,10 +782,22 @@ while repeat_validation:
             wait_for_press = False
             validation_is_finished = False
 
+# save validation data
+val_df = pd.DataFrame({
+    'mean_distance_gaze_to_target': [mean_target_dist],
+    'variance_distance_gaze_to_target': [var_target_dist],
+    'proportion_of_time_gaze_on_screen': [prop_on_screen]
+})
+val_df.to_csv(vdata_file_path, index=False)
+
 # stop recording
 controller.stop_recording()
 # close the file
 controller.close()
 
+# close experiment windows
 win.close()
+calibration_res_win.close()
+
+# close PsychoPy
 core.quit()
