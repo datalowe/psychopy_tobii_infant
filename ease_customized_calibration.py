@@ -452,7 +452,6 @@ controller.update_calibration = types.MethodType(
 # POSITION PARTICIPANT
 # ========================================
 # setup the attention grabber during adjusting the participant's position
-# REPLACEME
 grabber.setAutoDraw(True)
 grabber.play()
 # show the relative position of the subject to the eyetracker
