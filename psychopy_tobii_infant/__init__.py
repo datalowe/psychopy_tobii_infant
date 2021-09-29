@@ -121,7 +121,6 @@ class TobiiController:
         # if no calibration results window is specified, use
         # the 'win' window for showing calibration results
         if calibration_res_win is None:
-            print('calibration_res_win is', calibration_res_win)
             self.calibration_res_win = win
         else:
             self.calibration_res_win = calibration_res_win
