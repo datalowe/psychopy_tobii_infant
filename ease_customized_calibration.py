@@ -508,9 +508,9 @@ end_positioning_txt = visual.TextStim(
 experimenter_msg = visual.TextStim(
     win=calibration_res_win,
     text=(
-        "Har du kontrollerat datorns ljud-/volyminställningar?\n\n"
-        "Om du INTE kontrollerat ljudet, tryck ESCAPE för att avbryta kalibreringen.\n"
-        "Om du HAR kontrollerat ljudet, tryck SPACE för att fortsätta kalibreringen.\n"
+        "Have you checked the computer's sound/volume settings?\n\n"
+        "If you have NOT checked the sound, hit ESCAPE to abort calibration.\n"
+        "If you HAVE checked the sound, hit SPACE to continue calibration.\n"
     ),
     pos=(0, 0),
     color=[-1, -1, -1],
