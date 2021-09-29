@@ -428,13 +428,23 @@ for sound_path in GROW_SOUND_PATHS:
 # at first of loaded grow sounds, but will be randomly updated
 grow_sound = grow_sounds[0]
 
-# setup the attention grabber during adjusting the participant's position
+# set up the attention grabber during adjusting the participant's position
 grabber = visual.MovieStim3(
     win, 
     ATT_GRAB_MOVIE_PATH, 
     noAudio=False,
     volume=ATT_GRAB_VOLUME,
     size=(1280 * 2/3, 720 * 2/3)
+)
+# set up message to experimenter about how to end positioning phase 
+end_positioning_txt = visual.TextStim(
+    win=calibration_res_win,
+    text="Once participant is correctly positioned, hit SPACE",
+    pos=(0, 0),
+    color="black",
+    units="pix",
+    alignText="center",
+    autoLog=False,
 )
 
 # initialize TobiiInfantController to communicate with the eyetracker
@@ -454,12 +464,14 @@ controller.update_calibration = types.MethodType(
 # setup the attention grabber during adjusting the participant's position
 grabber.setAutoDraw(True)
 grabber.play()
+end_positioning_txt.setAutoDraw(True)
 # show the relative position of the subject to the eyetracker
 # Press space to exit
 controller.show_status()
 
 # stop the attention grabber
 grabber.setAutoDraw(False)
+end_positioning_txt.setAutoDraw(False)
 # pause movie, so that it can then be switched back to during calibration
 grabber.pause()
 
