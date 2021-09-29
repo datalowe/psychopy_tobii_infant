@@ -1067,6 +1067,10 @@ class TobiiController:
                     break
 
             self.win.flip()
+            # allow for updates to experiment/calibration results window
+            # here
+            if self.calibration_res_win:
+                self.calibration_res_win.flip()
 
         self.eyetracker.unsubscribe_from(tr.EYETRACKER_USER_POSITION_GUIDE,
                                          self._on_gaze_data)
