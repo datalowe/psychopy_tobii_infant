@@ -108,6 +108,13 @@ Demo stimuli released under Creative Commons CC0, aka no copyright:
 + [infant/](https://bit.ly/2BnAGwG)
 + [stim/](https://bit.ly/2SQAOf9)
 
+**Notes**
+
+On Windows machines, PsychoPy sometimes is not focused and keyboard inputs are not detected by PsychoPy.
+Users might get stuck in `show_status()` or other procedures that require keyboard inputs. Details can be found in [#8](https://github.com/yh-luo/psychopy_tobii_infant/issues/8). Two workarounds are provided:
+- Simply put `from moviepy.config import get_setting` in the beginning of the script.
+- Use Alt + Tab to manually focus PsychoPy.
+
 ### demo1_calibration.py
 
 1. Show the relative position of the subject to the eyetracker
@@ -143,7 +150,6 @@ Demo stimuli released under Creative Commons CC0, aka no copyright:
 1. Show the relative position of the subject to the eyetracker
 2. Run five-points calibration with sound
 
-
 ### demo7_calibration_validation
 
 1. Show the relative position of the subject to the eyetracker
@@ -151,6 +157,19 @@ Demo stimuli released under Creative Commons CC0, aka no copyright:
 3. Run calibration validation automatically and show the results
 
 ## Changelog
+
+### [0.8.0] 2021-9
+
+#### Improvements
+
++ Validation procedure for `TobiiInfantController`.
++ New `shuffle` argument (default is `True`) for `TobiiInfantController.run_calibration` to control the randomization of calibration stimuli.
+
+#### Changed
+
++ A large part of codes had been refactored. If you used a modified version of this package, please be aware of that before upgrading!
++ New class `InfantStimuli` is used to handle the images for infant-friendly calibration/validation.
+Users now can use additional arguments of `psychopy.visual.ImageStim` for the calibration stimuli.
 
 ### [0.7.1] 2021-4
 
