@@ -317,8 +317,6 @@ def automated_calibration(
         if collect_when_shrunk:
             # check if the current target width is less than twice
             # as large as the minimum possible width
-            print('TARGET_CURR_WIDTH', target_curr_width)
-            print('TARGET_MIN_WIDTH', target_min_width)
             if target_curr_width < (2 * target_min_width):
                 # allow the participant to focus
                 core.wait(_focus_time)
