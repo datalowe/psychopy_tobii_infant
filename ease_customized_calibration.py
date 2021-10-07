@@ -139,7 +139,7 @@ def manual_calibration(
     # variable for holding previous frame's target width
     previous_frame_width = None
     # minimum possible target width
-    target_min_width = self.target_original_size[0] * self.calibration_target_min
+    target_min_width = self.targets.get_stim_original_size(0)[0] * self.calibration_target_min
     # start calibration
     event.clearEvents()
     current_point_index = -1
@@ -181,13 +181,13 @@ def manual_calibration(
 
         # draw calibration target
         if current_point_index in self.retry_points:
-            self.targets[current_point_index].setPos(
+            self.targets.get_stim(current_point_index).setPos(
                 self.original_calibration_points[current_point_index])
             t = (clock.getTime() - target_start_time) * self.shrink_speed
             newsize = [(np.sin(t)**2 + self.calibration_target_min) * e
-                       for e in self.target_original_size]
-            self.targets[current_point_index].setSize(newsize)
-            self.targets[current_point_index].draw()
+                       for e in self.targets.get_stim_original_size(current_point_index)]
+            self.targets.get_stim(current_point_index).setSize(newsize)
+            self.targets.get_stim(current_point_index).draw()
             
             # handle playing sounds if target started growing
             if previous_frame_width is not None:
@@ -202,7 +202,7 @@ def manual_calibration(
             previous_frame_width = newsize[0]
         
         # get current target width 
-        target_curr_width = self.targets[current_point_index].size[0]
+        target_curr_width = self.targets.get_stim(current_point_index).size[0]
         if collect_when_shrunk:
             # check if the current target width is less than twice
             # as large as the minimum possible width
@@ -249,7 +249,7 @@ def automated_calibration(
     # variable for holding previous frame's target width
     previous_frame_width = None
     # minimum possible target width
-    target_min_width = self.target_original_size[0] * self.calibration_target_min
+    target_min_width = self.targets.get_stim_original_size(0)[0] * self.calibration_target_min
     # start calibration
     event.clearEvents()
     current_point_index = -1
@@ -278,13 +278,13 @@ def automated_calibration(
         
         # draw calibration target
         if current_point_index in self.retry_points:
-            self.targets[current_point_index].setPos(
+            self.targets.get_stim(current_point_index).setPos(
                 self.original_calibration_points[current_point_index])
             t = (clock.getTime() - target_start_time) * self.shrink_speed
             newsize = [(np.sin(t)**2 + self.calibration_target_min) * e
-                       for e in self.target_original_size]
-            self.targets[current_point_index].setSize(newsize)
-            self.targets[current_point_index].draw()
+                       for e in self.targets.get_stim_original_size(current_point_index)]
+            self.targets.get_stim(current_point_index).setSize(newsize)
+            self.targets.get_stim(current_point_index).draw()
             
             # handle playing sound if target started growing
             if previous_frame_width is not None:
@@ -313,10 +313,12 @@ def automated_calibration(
             previous_frame_width = newsize[0]
         
         # get current target width 
-        target_curr_width = self.targets[current_point_index].size[0]
+        target_curr_width = self.targets.get_stim(current_point_index).size[0]
         if collect_when_shrunk:
             # check if the current target width is less than twice
             # as large as the minimum possible width
+            print('TARGET_CURR_WIDTH', target_curr_width)
+            print('TARGET_MIN_WIDTH', target_min_width)
             if target_curr_width < (2 * target_min_width):
                 # allow the participant to focus
                 core.wait(_focus_time)
