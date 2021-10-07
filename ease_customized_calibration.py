@@ -477,6 +477,16 @@ grabber = visual.MovieStim3(
     volume=ATT_GRAB_VOLUME,
     size=(1280 * 2/3, 720 * 2/3)
 )
+# set up message to experimenter about how to end positioning phase 
+end_positioning_txt = visual.TextStim(
+    win=calibration_res_win,
+    text="Once participant is correctly positioned, hit SPACE",
+    pos=(0, 0),
+    color="black",
+    units="pix",
+    alignText="center",
+    autoLog=False,
+)
 
 # ========================================
 # REMIND EXPERIMENTER ABOUT VOLUME
@@ -492,9 +502,9 @@ grabber = visual.MovieStim3(
 experimenter_msg = visual.TextStim(
     win=calibration_res_win,
     text=(
-        "Har du kontrollerat datorns ljud-/volyminställningar?\n\n"
-        "Om du INTE kontrollerat ljudet, tryck ESCAPE för att avbryta kalibreringen.\n"
-        "Om du HAR kontrollerat ljudet, tryck SPACE för att fortsätta kalibreringen.\n"
+        "Have you checked the computer's sound/volume settings?\n\n"
+        "If you have NOT checked the sound, hit ESCAPE to abort calibration.\n"
+        "If you HAVE checked the sound, hit SPACE to continue calibration.\n"
     ),
     pos=(0, 0),
     color=[-1, -1, -1],
@@ -538,12 +548,14 @@ controller.update_calibration = types.MethodType(
 # show attention grabber
 grabber.setAutoDraw(True)
 grabber.play()
+end_positioning_txt.setAutoDraw(True)
 # show the relative position of the subject to the eyetracker
 # Press space to exit
 controller.show_status()
 
 # stop the attention grabber
 grabber.setAutoDraw(False)
+end_positioning_txt.setAutoDraw(False)
 # pause movie, so that it can then be switched back to during calibration
 grabber.pause()
 
