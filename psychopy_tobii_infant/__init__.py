@@ -951,54 +951,58 @@ class TobiiController:
         img_draw = ImageDraw.Draw(img)
         result_img = visual.SimpleImageStim(self.calibration_res_win, img, autoLog=False)
         img_draw.rectangle(((0, 0), tuple(self.win.size)), fill=(0, 0, 0, 0))
-        if self.calibration_result.status == tr.CALIBRATION_STATUS_FAILURE:
-            # computeCalibration failed.
+        # the calibration_points list(-like) appears to only include points
+        # for which calibration was 'successful', ie participant gaze could be
+        # estimated (note that this doesn't mean that the participant looked right
+        # at the target, only that the eyetracker was able to capture their gaze
+        # at all during calibration).
+        # if *all* calibration points failed, it doesn't make sense to show results.
+        # do note however that the calibration *in its entirety* could still have
+        # 'failed', since tobii_research considers this to happen as soon as one
+        # point's calibration 'fails'.
+        if len(self.calibration_result.calibration_points) == 0:
             pass
         else:
-            if len(self.calibration_result.calibration_points) == 0:
-                pass
-            else:
-
-                for this_point in self.calibration_result.calibration_points:
-                    p = this_point.position_on_display_area
-                    for this_sample in this_point.calibration_samples:
-                        lp = this_sample.left_eye.position_on_display_area
-                        rp = this_sample.right_eye.position_on_display_area
-                        if (this_sample.left_eye.validity ==
-                                tr.VALIDITY_VALID_AND_USED):
-                            img_draw.line(
+            for this_point in self.calibration_result.calibration_points:
+                p = this_point.position_on_display_area
+                for this_sample in this_point.calibration_samples:
+                    lp = this_sample.left_eye.position_on_display_area
+                    rp = this_sample.right_eye.position_on_display_area
+                    if (this_sample.left_eye.validity ==
+                            tr.VALIDITY_VALID_AND_USED):
+                        img_draw.line(
+                            (
+                                (p[0] * self.win.size[0],
+                                    p[1] * self.win.size[1]),
                                 (
-                                    (p[0] * self.win.size[0],
-                                     p[1] * self.win.size[1]),
-                                    (
-                                        lp[0] * self.win.size[0],
-                                        lp[1] * self.win.size[1],
-                                    ),
+                                    lp[0] * self.win.size[0],
+                                    lp[1] * self.win.size[1],
                                 ),
-                                fill=(0, 255, 0, 255),
-                            )
-                        if (this_sample.right_eye.validity ==
-                                tr.VALIDITY_VALID_AND_USED):
-                            img_draw.line(
+                            ),
+                            fill=(0, 255, 0, 255),
+                        )
+                    if (this_sample.right_eye.validity ==
+                            tr.VALIDITY_VALID_AND_USED):
+                        img_draw.line(
+                            (
+                                (p[0] * self.win.size[0],
+                                    p[1] * self.win.size[1]),
                                 (
-                                    (p[0] * self.win.size[0],
-                                     p[1] * self.win.size[1]),
-                                    (
-                                        rp[0] * self.win.size[0],
-                                        rp[1] * self.win.size[1],
-                                    ),
+                                    rp[0] * self.win.size[0],
+                                    rp[1] * self.win.size[1],
                                 ),
-                                fill=(255, 0, 0, 255),
-                            )
-                    img_draw.ellipse(
-                        (
-                            (p[0] * self.win.size[0] - 3,
-                             p[1] * self.win.size[1] - 3),
-                            (p[0] * self.win.size[0] + 3,
-                             p[1] * self.win.size[1] + 3),
-                        ),
-                        outline=(0, 0, 0, 255),
-                    )
+                            ),
+                            fill=(255, 0, 0, 255),
+                        )
+                img_draw.ellipse(
+                    (
+                        (p[0] * self.win.size[0] - 3,
+                            p[1] * self.win.size[1] - 3),
+                        (p[0] * self.win.size[0] + 3,
+                            p[1] * self.win.size[1] + 3),
+                    ),
+                    outline=(0, 0, 0, 255),
+                )
 
         result_img.setImage(img)
         return result_img
