@@ -63,6 +63,11 @@ ATT_GRAB_MOVIE_PATH = "infant/waybuloo_intro.mp4"
 
 # grow sound audio volume (scale goes from 0 to 1)
 GROW_SOUND_VOLUME = 1
+# the grow/shrink speed of calibration targets
+GROW_SHRINK_SPEED = 1.75 * 1.5
+# the number of grow/shrink cycles that each calibration target should go through,
+# during automated calibration, before an attempt is made to collect calibration data
+NUM_GROW_SHRINK_CYCLES = 3
 
 # attention grabber video's audio volume (scale goes from 0 to 1)
 ATT_GRAB_VOLUME = 0.5
@@ -99,7 +104,8 @@ def main_calibration(
             self,
             _focus_time,
             collect_key,
-            exit_key
+            exit_key,
+            cycles_before_calibrate=NUM_GROW_SHRINK_CYCLES
         )
         # add attribute to 'self', ie the TobiiInfantController
         # instance, to indicate that automated calibration
@@ -536,6 +542,8 @@ controller = TobiiInfantController(
     win=win, 
     calibration_res_win=calibration_res_win
 )
+controller.shrink_speed = GROW_SHRINK_SPEED
+
 # use the customized calibration
 controller.update_calibration = types.MethodType(
     main_calibration,
