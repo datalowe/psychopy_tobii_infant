@@ -1,3 +1,4 @@
+import math
 import os
 import types
 
@@ -78,10 +79,23 @@ ATT_GRAB_VOLUME = 0.5
 # order to get minimum x/y coordinates)
 GAZE_TARGET_X_MAX = 600
 GAZE_TARGET_Y_MAX = 400
+# (not constant) calculate angle (rad) of vector pointing
+# from origin towards top right
+# corner of area in which targets will appear
+orig_tr_angle = math.atan(GAZE_TARGET_Y_MAX/GAZE_TARGET_X_MAX)
 
 # speed of post-calibration validation target, in pixels/frame
 # (eg 5 pixels/frame means roughly 5*60=300 pixels/second)
 VALIDATION_MOVEMENT_SPEED = 5
+
+# initialize list which specifies gaze target movement directions
+# (eg 'LtR' for 'Left to Right', 'LTtBR' for 'Left Top to Bottom Right')
+VALIDATION_TARGET_DIRS = [
+    'BLtTR',
+    'TLtBR',
+    'BRtTL',
+    'TRtBL'
+]
 
 # ========================================
 # DEFINE FUNCTIONS
@@ -347,7 +361,9 @@ def automated_calibration(
 def place_target_at_start(movement_dir, target):
     """
     movement_dir: Direction of movement. Must be
-    one of 'LtR', 'TtB', 'RtL' or 'BtT'.
+    one of 'LtR', 'TtB', 'RtL'm 'BtT',
+    'BLtTR', 'TRtBL', 'BRtTL' or 'TLtBR'.
+    eg 'BLtTR' means 'bottom left to top right'.
     target: PsychoPy visual object, ie target object that is
     to be moved.
     """
@@ -363,6 +379,18 @@ def place_target_at_start(movement_dir, target):
     elif movement_dir == 'BtT':
         x_pos = 0
         y_pos = -GAZE_TARGET_Y_MAX
+    elif movement_dir == 'BLtTR':
+        x_pos = -GAZE_TARGET_X_MAX
+        y_pos = -GAZE_TARGET_Y_MAX
+    elif movement_dir == 'TRtBL':
+        x_pos = GAZE_TARGET_X_MAX
+        y_pos = GAZE_TARGET_Y_MAX
+    elif movement_dir == 'BRtTL':
+        x_pos = GAZE_TARGET_X_MAX
+        y_pos = -GAZE_TARGET_Y_MAX
+    elif movement_dir == 'TLtBR':
+        x_pos = -GAZE_TARGET_X_MAX
+        y_pos = GAZE_TARGET_Y_MAX
     target.pos = (x_pos, y_pos)
     return None
 
@@ -372,7 +400,9 @@ def place_target_at_start(movement_dir, target):
 def smoothly_move_target(movement_dir, target, step_size):
     """
     movement_dir: Direction of movement. Must be
-    one of 'LtR', 'TtB', 'RtL' or 'BtT'.
+    one of 'LtR', 'TtB', 'RtL', 'BtT',
+    'BLtTR', 'TRtBL', 'BRtTL' or 'TLtBR'. eg 'BLtTR' means
+    'bottom left to top right'.
     target: PsychoPy visual object, ie target object that is
     to be moved.
     step_size: float value which indicates how large each 'step'
@@ -384,23 +414,39 @@ def smoothly_move_target(movement_dir, target, step_size):
     finished_moving = False
     if movement_dir == 'LtR':
         x_pos += step_size
-        y_pos = 0
         if x_pos > GAZE_TARGET_X_MAX:
             finished_moving = True
     elif movement_dir == 'RtL':
         x_pos -= step_size
-        y_pos = 0
         if x_pos < -GAZE_TARGET_X_MAX:
             finished_moving = True
     elif movement_dir == 'TtB':
-        x_pos = 0
         y_pos -= step_size
         if y_pos < -GAZE_TARGET_Y_MAX:
             finished_moving = True
     elif movement_dir == 'BtT':
-        x_pos = 0
         y_pos += step_size
         if y_pos > GAZE_TARGET_Y_MAX:
+            finished_moving = True
+    if movement_dir == 'BLtTR':
+        x_pos += math.cos(orig_tr_angle)*step_size
+        y_pos += math.sin(orig_tr_angle)*step_size
+        if x_pos > GAZE_TARGET_X_MAX or y_pos > GAZE_TARGET_Y_MAX:
+            finished_moving = True
+    if movement_dir == 'TRtBL':
+        x_pos -= math.cos(orig_tr_angle)*step_size
+        y_pos -= math.sin(orig_tr_angle)*step_size
+        if x_pos < -GAZE_TARGET_X_MAX or y_pos < -GAZE_TARGET_Y_MAX:
+            finished_moving = True
+    if movement_dir == 'BRtTL':
+        x_pos -= math.cos(orig_tr_angle)*step_size
+        y_pos += math.sin(orig_tr_angle)*step_size
+        if x_pos < -GAZE_TARGET_X_MAX or y_pos > GAZE_TARGET_Y_MAX:
+            finished_moving = True
+    if movement_dir == 'TLtBR':
+        x_pos += math.cos(orig_tr_angle)*step_size
+        y_pos -= math.sin(orig_tr_angle)*step_size
+        if x_pos > GAZE_TARGET_X_MAX or y_pos < -GAZE_TARGET_Y_MAX:
             finished_moving = True
     target.pos = (x_pos, y_pos)
     return finished_moving
@@ -627,14 +673,6 @@ gaze_to_target_dists = []
 # recording timepoint
 gaze_on_screen_inds = []
 
-# initialize list which specifies gaze target movement directions
-# (eg 'LtR' for 'Left to Right', 'TtB' for 'Top to Bottom')
-original_target_dir_ls = [
-    'LtR',
-    'TtB',
-    'RtL',
-    'BtT'
-]
 # boolean for indicating if target is moving(True) or not (False)
 target_is_moving = False
 # boolean for indicating if validation is finished
@@ -648,7 +686,7 @@ while repeat_validation:
     # make a copy of list of gaze target movement directions,
     # to enable popping off directions one by one (without
     # modifying original list)
-    target_dir_ls = original_target_dir_ls[:]
+    target_dir_ls = VALIDATION_TARGET_DIRS[:]
     # clear validation data, in case this is not the first
     # validation run
     gaze_to_target_dists.clear()
