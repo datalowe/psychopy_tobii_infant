@@ -93,8 +93,8 @@ VALIDATION_MOVEMENT_SPEED = 5
 VALIDATION_TARGET_DIRS = [
     'BLtTR',
     'TLtBR',
-    'BRtTL',
-    'TRtBL'
+    'TRtBL',
+    'BRtTL'
 ]
 
 # ========================================
@@ -694,7 +694,7 @@ while repeat_validation:
     # keep going until target has finished all movements
     while not validation_is_finished:
         if not target_is_moving:
-            target_dir = target_dir_ls.pop()
+            target_dir = target_dir_ls.pop(0)
             place_target_at_start(target_dir, gaze_target)
             target_is_moving = True
             # play a random attention grabbing sound in conjunction
@@ -716,8 +716,9 @@ while repeat_validation:
         # Get the latest gaze position data.
         currentGazePosition = controller.get_current_gaze_position()
 
-        # position and draw gaze target
+        # draw gaze target (on both participant-facing and experimenter-facing monitor)
         gaze_target.draw()
+        gaze_target.draw(win=calibration_res_win)
 
         # The value is numpy.nan if Tobii failed to detect gaze position.
         if np.nan not in currentGazePosition:
