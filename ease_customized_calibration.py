@@ -86,7 +86,7 @@ orig_tr_angle = math.atan(GAZE_TARGET_Y_MAX/GAZE_TARGET_X_MAX)
 
 # speed of post-calibration validation target, in pixels/frame
 # (eg 5 pixels/frame means roughly 5*60=300 pixels/second)
-VALIDATION_MOVEMENT_SPEED = 5
+VALIDATION_MOVEMENT_SPEED = 8
 
 # initialize list which specifies gaze target movement directions
 # (eg 'LtR' for 'Left to Right', 'LTtBR' for 'Left Top to Bottom Right')
@@ -112,8 +112,10 @@ def main_calibration(
     # set boolean property that indicates if the experimenter wants to
     # temporarily show the attention grabber movie at the moment
     self.show_att_grabber = False
-    # run automated procedure if it hasn't already been run
-    if not hasattr(self, 'automated_calib_done'):
+    # run automated procedure if the tobiicontroller was created with specification
+    # that first calibration was to be automated, or experimenter has instructed
+    # (with option 'a') that a full automated calibration is to be run
+    if self.run_auto_calibration:
         automated_calibration(
             self,
             _focus_time,
@@ -121,11 +123,6 @@ def main_calibration(
             exit_key,
             cycles_before_calibrate=NUM_GROW_SHRINK_CYCLES
         )
-        # add attribute to 'self', ie the TobiiInfantController
-        # instance, to indicate that automated calibration
-        # has been run
-        # (any additional calibrations are to be done 'manually')
-        self.automated_calib_done = True
     else:
         manual_calibration(
             self,
@@ -586,7 +583,8 @@ while wait_confirmation:
 # initialize TobiiInfantController to communicate with the eyetracker
 controller = TobiiInfantController(
     win=win, 
-    calibration_res_win=calibration_res_win
+    calibration_res_win=calibration_res_win,
+    first_calibration_automated=True
 )
 controller.shrink_speed = GROW_SHRINK_SPEED
 

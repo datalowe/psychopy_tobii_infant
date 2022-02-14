@@ -1190,10 +1190,14 @@ class TobiiInfantController(TobiiController):
         win,
         calibration_res_win=None,
         id=0, 
-        filename="gaze_TOBII_output.tsv"
+        filename="gaze_TOBII_output.tsv",
+        # DATALOWE: ADDED AUTOMATED CALIBRATION FUNCTIONALITY
+        first_calibration_automated=False
     ):
         super().__init__(win, calibration_res_win, id, filename)
         self.update_calibration = self._update_calibration_infant
+        # DATALOWE: ADDED AUTOMATED CALIBRATION FUNCTIONALITY
+        self.run_auto_calibration = first_calibration_automated
         # slower for infants
         self.shrink_speed = 1
         if _has_addons:
@@ -1396,21 +1400,26 @@ class TobiiInfantController(TobiiController):
             # calibration results) display
             self.win.flip()
             self.update_calibration(_focus_time=focus_time)
+            # DATALOWE: ADDED AUTOMATED CALIBRATION FUNCTIONALITY
+            self.run_auto_calibration = False
             self.calibration_result = self.calibration.compute_and_apply()
             self.win.flip()
 
             result_img = self._show_calibration_result()
+            # DATALOWE: ADDED AUTOMATED CALIBRATION FUNCTIONALITY
             result_msg.setText(
-                "Accept/Retry: {k}\n"
+                "Accept/Retry (manually): {k}\n"
                 "Select/Deselect all points: 0\n"
                 "Select/Deselect recalibration points: 1-{p} key\n"
+                "Rerun entire automated calibration: a\n"
                 "Abort: esc".format(k=decision_key, p=cp_num))
 
             waitkey = True
             self.retry_points = []
             while waitkey:
                 for key in event.getKeys():
-                    if key in [decision_key, "escape"]:
+                    # DATALOWE: ADDED AUTOMATED CALIBRATION FUNCTIONALITY
+                    if key in [decision_key, "escape", "a"]:
                         waitkey = False
                     elif key in self.numkey_dict:
                         if self.numkey_dict[key] == -1:
@@ -1451,6 +1460,17 @@ class TobiiInfantController(TobiiController):
             elif key == "escape":
                 retval = False
                 in_calibration_loop = False
+            # DATALOWE: ADDED AUTOMATED CALIBRATION FUNCTIONALITY
+            elif key.lower() == 'a':
+                # run automated calibration again, after clearing screen
+                # and discarding all previously gathered data
+                self.calibration_res_win.flip()
+                self.retry_points = list(range(cp_num))                
+                for point_index in self.retry_points:
+                    x, y = self._get_tobii_pos(
+                        self.original_calibration_points[point_index])
+                    self.calibration.discard_data(x, y)
+                    self.run_auto_calibration = True
 
         self.calibration.leave_calibration_mode()
 
